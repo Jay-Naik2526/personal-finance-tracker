@@ -10,21 +10,43 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Database Connection
-// Database Connection
+// Datab// Database Connection (Cached for Serverless)
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/finance-tracker', {
+    if (cached.conn) {
+        return cached.conn;
+    }
+
+    if (!cached.promise) {
+        const io = {
+            bufferCommands: false, // Disable Mongoose buffering
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
+        };
+
+        cached.promise = mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/finance-tracker', io).then((mongoose) => {
+            return mongoose;
         });
-        console.log('MongoDB Connected');
-    } catch (err) {
-        console.error('MongoDB Connection Error:', err);
     }
+
+    try {
+        cached.conn = await cached.promise;
+        console.log('MongoDB Connected (Cached)');
+    } catch (e) {
+        cached.promise = null;
+        console.error('MongoDB Connection Error:', e);
+        throw e;
+    }
+
+    return cached.conn;
 };
 
-// Connect immediately
+// Connect
 connectDB();
 
 // Routes
