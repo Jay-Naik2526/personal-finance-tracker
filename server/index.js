@@ -46,8 +46,16 @@ const connectDB = async () => {
     return cached.conn;
 };
 
-// Connect
-connectDB();
+// Middleware to Ensure DB Connection
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        console.error('DB Connection Middleware Error:', err);
+        res.status(500).json({ error: 'Database Connection Failed' });
+    }
+});
 
 // Routes
 const transactionRoutes = require('./routes/transactions');
