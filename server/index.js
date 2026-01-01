@@ -11,9 +11,21 @@ app.use(cors());
 app.use(express.json());
 
 // Database Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/finance-tracker')
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
+// Database Connection
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/finance-tracker', {
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        });
+        console.log('MongoDB Connected');
+    } catch (err) {
+        console.error('MongoDB Connection Error:', err);
+    }
+};
+
+// Connect immediately
+connectDB();
 
 // Routes
 const transactionRoutes = require('./routes/transactions');
