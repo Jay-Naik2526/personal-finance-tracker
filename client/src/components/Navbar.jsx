@@ -122,9 +122,7 @@ const Navbar = () => {
         <>
             {/* ─── WATERMARK LOGO (FLOATS TOP-LEFT ON ALL SCREENS) ──────────────── */}
             <div className="fixed top-5 left-5 md:top-6 md:left-6 z-50 flex items-center gap-2.5 bg-surface/80 backdrop-blur-md border border-border px-3.5 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-card select-none">
-                <div className="w-5 h-5 md:w-6 md:h-6 bg-ink rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-[8px] md:text-[9px] font-bold">MM</span>
-                </div>
+                <img src="/logo.png" alt="MoneyMap Logo" className="w-5 h-5 md:w-6 md:h-6 object-contain flex-shrink-0 rounded-md" />
                 <span className="text-ink font-extrabold text-[12px] md:text-[13px] tracking-tight">MoneyMap</span>
             </div>
 

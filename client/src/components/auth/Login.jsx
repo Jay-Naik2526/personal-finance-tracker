@@ -35,9 +35,7 @@ const Login = () => {
                     style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
 
                 <div className="relative z-10 flex items-center gap-2.5">
-                    <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
-                        <span className="text-ink text-[11px] font-bold">MM</span>
-                    </div>
+                    <img src="/logo.png" alt="MoneyMap Logo" className="w-8 h-8 object-contain flex-shrink-0 rounded-xl" />
                     <span className="font-extrabold text-white text-base tracking-tight">MoneyMap</span>
                 </div>
 
@@ -77,9 +75,7 @@ const Login = () => {
 
                     {/* Mobile brand */}
                     <div className="flex items-center gap-2 mb-10 lg:hidden">
-                        <div className="w-7 h-7 bg-ink rounded-xl flex items-center justify-center">
-                            <span className="text-white text-[10px] font-bold">MM</span>
-                        </div>
+                        <img src="/logo.png" alt="MoneyMap Logo" className="w-7 h-7 object-contain flex-shrink-0 rounded-lg" />
                         <span className="font-extrabold text-ink text-sm">MoneyMap</span>
                     </div>
 
