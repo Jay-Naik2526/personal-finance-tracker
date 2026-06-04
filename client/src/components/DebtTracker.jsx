@@ -479,7 +479,7 @@ const DebtTracker = () => {
                                         src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(
                                             preFillAmount
                                             ? `upi://pay?pa=${user.upiId}&pn=${encodeURIComponent(user.upiName)}&am=${qrDebt.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Settle IOU - ${qrDebt.person}`)}`
-                                            : `upi://pay?pa=${user.upiId}&pn=${encodeURIComponent(user.upiName)}&cu=INR`
+                                            : `upi://pay?pa=${user.upiId}`
                                         )}`} 
                                         alt="UPI QR Code" 
                                         className="w-48 h-48 mx-auto rounded-lg"
