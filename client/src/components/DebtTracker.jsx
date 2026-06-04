@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
     UserPlus, Check, Trash2, ArrowUpRight, ArrowDownLeft, QrCode, 
     Settings, ChevronDown, ChevronUp, Info, AlertCircle, Coins, 
-    CheckCircle, X, ExternalLink 
+    CheckCircle, X, ExternalLink, Copy 
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
@@ -17,6 +17,7 @@ const DebtTracker = () => {
     const [simplify, setSimplify] = useState(false);
     const [loadingSimplify, setLoadingSimplify] = useState(false);
     const [preFillAmount, setPreFillAmount] = useState(false);
+    const [upiCopied, setUpiCopied] = useState(false);
     
     // Form for UPI settings
     const [upiForm, setUpiForm] = useState({ upiId: '', upiName: '' });
@@ -88,6 +89,13 @@ const DebtTracker = () => {
                 alert('Error deleting'); 
             } 
         }
+    };
+
+    const handleCopyUpiId = () => {
+        if (!user?.upiId) return;
+        navigator.clipboard.writeText(user.upiId);
+        setUpiCopied(true);
+        setTimeout(() => setUpiCopied(false), 2000);
     };
 
     // Save UPI settings
@@ -505,6 +513,31 @@ const DebtTracker = () => {
                                         {preFillAmount 
                                             ? "⚠️ Some banks block P2P transfers with pre-filled amounts for security. If scanning fails, uncheck this."
                                             : "Friend enters the amount manually after scanning. (Highly recommended to prevent bank blocks)."}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2 pt-2 border-t border-border mt-3 text-left">
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={handleCopyUpiId}
+                                            className="flex-1 btn-ghost py-2 text-xs font-bold flex items-center justify-center gap-1.5"
+                                        >
+                                            {upiCopied ? <Check size={12} className="text-pos stroke-[3]" /> : <Copy size={12} />}
+                                            {upiCopied ? "Copied VPA!" : "Copy UPI ID"}
+                                        </button>
+                                        
+                                        <a 
+                                            href={preFillAmount
+                                                ? `upi://pay?pa=${user.upiId}&pn=${encodeURIComponent(user.upiName)}&am=${qrDebt.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Settle IOU - ${qrDebt.person}`)}`
+                                                : `upi://pay?pa=${user.upiId}`
+                                            }
+                                            className="flex-1 btn-primary py-2 text-xs font-bold flex items-center justify-center gap-1.5 text-center"
+                                        >
+                                            <ExternalLink size={12} /> Pay on Mobile
+                                        </a>
+                                    </div>
+                                    <p className="text-[9px] text-dim leading-normal text-center mt-1.5">
+                                        Note: Bank apps (like IndusInd) sometimes restrict web QR codes. If scanning fails, try scanning with <strong>Google Pay / PhonePe / Paytm</strong>, copy the UPI ID, or tap "Pay on Mobile".
                                     </p>
                                 </div>
                             </div>
