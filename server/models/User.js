@@ -17,6 +17,16 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    upiId: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    upiName: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     createdAt: {
         type: Date,
         default: Date.now

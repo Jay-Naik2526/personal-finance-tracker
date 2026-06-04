@@ -103,4 +103,25 @@ router.get('/user', auth, async (req, res) => {
     }
 });
 
+// @route   PUT api/auth/user
+// @desc    Update user data (UPI ID & UPI Name)
+// @access  Private
+router.put('/user', auth, async (req, res) => {
+    const { upiId, upiName } = req.body;
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        if (upiId !== undefined) user.upiId = upiId;
+        if (upiName !== undefined) user.upiName = upiName;
+
+        await user.save();
+        const updatedUser = await User.findById(req.user.id).select('-password');
+        res.json(updatedUser);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
 module.exports = router;
