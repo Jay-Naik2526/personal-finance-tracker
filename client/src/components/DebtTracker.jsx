@@ -16,6 +16,7 @@ const DebtTracker = () => {
     const [showUpiSettings, setShowUpiSettings] = useState(false);
     const [simplify, setSimplify] = useState(false);
     const [loadingSimplify, setLoadingSimplify] = useState(false);
+    const [preFillAmount, setPreFillAmount] = useState(false);
     
     // Form for UPI settings
     const [upiForm, setUpiForm] = useState({ upiId: '', upiName: '' });
@@ -476,7 +477,9 @@ const DebtTracker = () => {
                                 <div className="p-3 bg-zinc-100 rounded-2xl inline-block shadow-card">
                                     <img 
                                         src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(
-                                            `upi://pay?pa=${user.upiId}&pn=${encodeURIComponent(user.upiName)}&am=${qrDebt.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Settle IOU - ${qrDebt.person}`)}`
+                                            preFillAmount
+                                            ? `upi://pay?pa=${user.upiId}&pn=${encodeURIComponent(user.upiName)}&am=${qrDebt.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Settle IOU - ${qrDebt.person}`)}`
+                                            : `upi://pay?pa=${user.upiId}&pn=${encodeURIComponent(user.upiName)}&cu=INR`
                                         )}`} 
                                         alt="UPI QR Code" 
                                         className="w-48 h-48 mx-auto rounded-lg"
@@ -487,9 +490,22 @@ const DebtTracker = () => {
                                     <div className="text-xs text-sub font-semibold">Paying <strong className="text-ink">{user.upiName}</strong></div>
                                     <div className="text-[9px] text-dim font-mono">{user.upiId}</div>
                                 </div>
-                                <div className="text-[10px] text-sub leading-normal bg-zinc-50 p-2.5 rounded-lg border border-border flex items-center gap-1.5 justify-center">
-                                    <Info size={12} className="text-sub shrink-0" />
-                                    <span>Pre-fills the correct bank payee & amount automatically!</span>
+                                
+                                <div className="pt-2.5 border-t border-border">
+                                    <label className="flex items-center justify-center gap-2.5 cursor-pointer py-1">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={preFillAmount} 
+                                            onChange={(e) => setPreFillAmount(e.target.checked)} 
+                                            className="w-4 h-4 accent-ink rounded border-border-strong"
+                                        />
+                                        <span className="text-xs font-bold text-ink">Pre-fill amount (₹{qrDebt.amount.toLocaleString('en-IN')})</span>
+                                    </label>
+                                    <p className="text-[10px] text-sub max-w-[250px] mx-auto mt-1 leading-normal text-center">
+                                        {preFillAmount 
+                                            ? "⚠️ Some banks block P2P transfers with pre-filled amounts for security. If scanning fails, uncheck this."
+                                            : "Friend enters the amount manually after scanning. (Highly recommended to prevent bank blocks)."}
+                                    </p>
                                 </div>
                             </div>
                         )}
