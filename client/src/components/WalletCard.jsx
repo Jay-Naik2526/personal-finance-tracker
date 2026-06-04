@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wallet, ArrowRightLeft, Edit2, Check, X, CreditCard } from 'lucide-react';
+import { Wallet, ArrowRightLeft, Edit2, CreditCard, X } from 'lucide-react';
 import axios from 'axios';
 
 const WalletCard = ({ type, balance, onUpdate }) => {
@@ -9,171 +9,129 @@ const WalletCard = ({ type, balance, onUpdate }) => {
     const [newBalance, setNewBalance] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const isCash = type === 'Cash';
+    const Icon = isCash ? Wallet : CreditCard;
+    const tintBg    = isCash ? '#F0FDF4' : '#EFF6FF';
+    const iconBg    = isCash ? 'bg-green-100' : 'bg-blue-100';
+    const iconColor = isCash ? 'text-green-600' : 'text-blue-600';
+    const accentColor = isCash ? '#16A34A' : '#2563EB';
+
     const handleWithdraw = async (e) => {
         e.preventDefault();
         if (!amount || amount <= 0) return;
         setLoading(true);
-
         try {
             const date = new Date();
-            // Withdrawal: Online -> Cash
-            await axios.post('/api/transactions', {
-                amount: Number(amount),
-                type: 'expense',
-                category: 'Transfer',
-                source: 'Online',
-                description: 'Withdrawal to Cash',
-                date
-            });
-
-            await axios.post('/api/transactions', {
-                amount: Number(amount),
-                type: 'income',
-                category: 'Transfer',
-                source: 'Cash',
-                description: 'Withdrawal from Online',
-                date
-            });
-
-            setIsWithdrawOpen(false);
-            setAmount('');
+            await axios.post('/api/transactions', { amount: Number(amount), type: 'expense', category: 'Transfer', source: 'Online', description: 'Withdrawal to Cash', date });
+            await axios.post('/api/transactions', { amount: Number(amount), type: 'income',  category: 'Transfer', source: 'Cash',   description: 'Withdrawal from Online', date });
+            setIsWithdrawOpen(false); setAmount('');
             if (onUpdate) onUpdate();
-        } catch (err) {
-            console.error(err);
-            alert('Transfer failed');
-        } finally {
-            setLoading(false);
-        }
+        } catch { alert('Transfer failed'); }
+        finally { setLoading(false); }
     };
 
     const handleBalanceUpdate = async (e) => {
         e.preventDefault();
         if (newBalance === '') return;
         setLoading(true);
-
         try {
-            // Calculate difference
-            const currentBal = Number(balance);
-            const targetBal = Number(newBalance);
-            const diff = targetBal - currentBal;
-
+            const diff = Number(newBalance) - Number(balance);
             if (diff !== 0) {
                 await axios.post('/api/transactions', {
-                    amount: Math.abs(diff),
-                    type: diff > 0 ? 'income' : 'expense', // Positive diff = Income, Negative = Expense
-                    category: 'Balance Adjustment',
-                    source: type,
-                    description: 'Manual Balance Correction',
-                    date: new Date()
+                    amount: Math.abs(diff), type: diff > 0 ? 'income' : 'expense',
+                    category: 'Balance Adjustment', source: type,
+                    description: 'Manual Balance Correction', date: new Date(),
                 });
             }
-
-            setIsEditOpen(false);
-            setNewBalance('');
+            setIsEditOpen(false); setNewBalance('');
             if (onUpdate) onUpdate();
-
-        } catch (err) {
-            console.error(err);
-            alert('Update failed');
-        } finally {
-            setLoading(false);
-        }
+        } catch { alert('Update failed'); }
+        finally { setLoading(false); }
     };
 
-    const gradientClass = type === 'Cash'
-        ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/5 to-transparent border-emerald-500/20'
-        : 'bg-gradient-to-br from-blue-500/20 via-blue-500/5 to-transparent border-blue-500/20';
-
-    const iconClass = type === 'Cash' ? 'text-emerald-400 bg-emerald-400/10' : 'text-blue-400 bg-blue-400/10';
-
     return (
-        <div className={`glass-card relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:border-white/20 hover:-translate-y-1 ${gradientClass}`}>
-            {/* Decorative Blur */}
-            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20 ${type === 'Cash' ? 'bg-emerald-500' : 'bg-blue-500'}`}></div>
-
-            <div className="p-6 relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-3 rounded-xl ${iconClass}`}>
-                            {type === 'Cash' ? <Wallet size={24} /> : <CreditCard size={24} />}
-                        </div>
-                        <div>
-                            <h3 className="text-muted text-sm font-medium uppercase tracking-wider">{type} Balance</h3>
-                            <div className="text-xs text-muted/50">Last updated: Just now</div>
-                        </div>
+        <div className="card p-5 relative overflow-hidden group h-full flex flex-col" style={{ background: tintBg }}>
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className={`icon-box ${iconBg} ${iconColor}`}>
+                        <Icon size={16} />
                     </div>
-                    <button
-                        onClick={() => { setNewBalance(balance); setIsEditOpen(true); }}
-                        className="p-2 rounded-lg text-muted/50 hover:text-white hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Edit Balance"
-                    >
-                        <Edit2 size={16} />
-                    </button>
-                </div>
-
-                <div className="mb-6">
-                    <div className="text-4xl font-bold text-white tracking-tight flex items-baseline">
-                        <span className="text-2xl mr-1 opacity-60">₹</span>
-                        {balance.toLocaleString()}
+                    <div>
+                        <div className="label">{type} Wallet</div>
+                        <div className="text-ink text-sm font-semibold mt-0.5">{isCash ? 'Physical cash' : 'UPI / Bank'}</div>
                     </div>
                 </div>
-
-                {type === 'Online' && (
-                    <button
-                        onClick={() => setIsWithdrawOpen(true)}
-                        className="w-full py-3 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 font-medium text-sm flex items-center justify-center gap-2 border border-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/10 active:scale-95"
-                    >
-                        <ArrowRightLeft size={16} />
-                        Withdraw to Cash
-                    </button>
-                )}
+                <button
+                    onClick={() => { setNewBalance(balance); setIsEditOpen(true); }}
+                    className="w-8 h-8 rounded-xl bg-white/70 text-dim hover:text-ink flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                    title="Edit balance"
+                >
+                    <Edit2 size={13} />
+                </button>
             </div>
 
-            {/* Edit Balance Modal */}
+            <div className="flex-1 mb-4">
+                <div className="flex items-baseline gap-0.5">
+                    <span className="text-sub text-base font-semibold">₹</span>
+                    <span className="num text-[2rem] leading-none text-ink">
+                        {balance.toLocaleString('en-IN')}
+                    </span>
+                </div>
+            </div>
+
+            {!isCash && (
+                <button
+                    onClick={() => setIsWithdrawOpen(true)}
+                    className="w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 bg-white/80 hover:bg-white text-ink border border-white/60 transition-all"
+                >
+                    <ArrowRightLeft size={12} />
+                    Withdraw to Cash
+                </button>
+            )}
+
+            {/* Edit Overlay */}
             {isEditOpen && (
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col justify-center p-6 z-20 animate-in fade-in zoom-in duration-200">
-                    <h4 className="text-sm text-muted mb-4 uppercase tracking-wider font-bold">Update {type} Balance</h4>
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col justify-center p-5 rounded-2xl z-20 animate-in">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="label">Update {type} Balance</div>
+                        <button onClick={() => setIsEditOpen(false)} className="text-dim hover:text-ink transition-colors"><X size={14} /></button>
+                    </div>
                     <form onSubmit={handleBalanceUpdate}>
-                        <input
-                            type="number"
-                            value={newBalance}
-                            onChange={(e) => setNewBalance(e.target.value)}
-                            className="w-full bg-transparent text-3xl font-bold text-white border-b-2 border-primary/50 focus:border-primary outline-none py-2 mb-6 placeholder-white/10"
-                            placeholder="0.00"
-                            autoFocus
-                        />
-                        <div className="flex gap-3">
-                            <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium text-sm transition-colors">
-                                Cancel
-                            </button>
-                            <button type="submit" disabled={loading} className="flex-1 py-3 rounded-xl bg-primary hover:bg-primary/90 text-white font-medium text-sm transition-colors shadow-lg shadow-primary/20">
-                                {loading ? 'Saving...' : 'Save'}
-                            </button>
+                        <div className="relative mb-5">
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 text-sub text-lg">₹</span>
+                            <input
+                                type="number" value={newBalance} onChange={(e) => setNewBalance(e.target.value)}
+                                className="w-full bg-transparent num text-3xl text-ink border-b-2 border-border focus:border-ink outline-none py-1.5 pl-6 placeholder-dim transition-colors"
+                                placeholder="0" autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-2.5 rounded-xl bg-raised hover:bg-border text-ink text-sm font-medium transition-all">Cancel</button>
+                            <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-xl bg-ink hover:bg-ink/85 disabled:opacity-50 text-white text-sm font-semibold transition-all">{loading ? 'Saving…' : 'Save'}</button>
                         </div>
                     </form>
                 </div>
             )}
 
-            {/* Withdraw Modal */}
+            {/* Withdraw Overlay */}
             {isWithdrawOpen && (
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col justify-center p-6 z-20 animate-in fade-in zoom-in duration-200">
-                    <h4 className="text-sm text-muted mb-4 uppercase tracking-wider font-bold">Withdraw Amount</h4>
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col justify-center p-5 rounded-2xl z-20 animate-in">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="label">Withdraw Amount</div>
+                        <button onClick={() => setIsWithdrawOpen(false)} className="text-dim hover:text-ink transition-colors"><X size={14} /></button>
+                    </div>
                     <form onSubmit={handleWithdraw}>
-                        <input
-                            type="number"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            className="w-full bg-transparent text-3xl font-bold text-white border-b-2 border-blue-500/50 focus:border-blue-500 outline-none py-2 mb-6 placeholder-white/10"
-                            placeholder="0.00"
-                            autoFocus
-                        />
-                        <div className="flex gap-3">
-                            <button type="button" onClick={() => setIsWithdrawOpen(false)} className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium text-sm transition-colors">
-                                Cancel
-                            </button>
-                            <button type="submit" disabled={loading} className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors shadow-lg shadow-blue-500/20">
-                                {loading ? 'Processing...' : 'Confirm'}
-                            </button>
+                        <div className="relative mb-5">
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 text-sub text-lg">₹</span>
+                            <input
+                                type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
+                                className="w-full bg-transparent num text-3xl text-ink border-b-2 border-border focus:border-ink outline-none py-1.5 pl-6 placeholder-dim transition-colors"
+                                placeholder="0" autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => setIsWithdrawOpen(false)} className="flex-1 py-2.5 rounded-xl bg-raised hover:bg-border text-ink text-sm font-medium transition-all">Cancel</button>
+                            <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-xl bg-ink hover:bg-ink/85 disabled:opacity-50 text-white text-sm font-semibold transition-all">{loading ? 'Processing…' : 'Confirm'}</button>
                         </div>
                     </form>
                 </div>

@@ -1,0 +1,52 @@
+name: Deploy Backend to Hugging Face Spaces
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Git Configuration
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Build Orphan Branch for Hugging Face
+        run: |
+          # Create a temp directory outside the git tree
+          mkdir -p ../temp_deploy
+          
+          # Copy everything from the server folder to it
+          cp -r server/* ../temp_deploy/
+          
+          # Create clean orphan deployment branch with no history
+          git checkout --orphan huggingface-deploy
+          
+          # Remove all tracked repository files from the index
+          git rm -rf .
+          
+          # Copy server contents to the root directory
+          cp -r ../temp_deploy/* .
+          
+          # Clean up temporary directory
+          rm -rf ../temp_deploy
+
+      - name: Commit and Push to Hugging Face Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git add -A
+          git commit -m "Deploy backend to Hugging Face Spaces"
+          # Push directly to the Hugging Face Space Git repository
+          git push -f https://github-actions:$HF_TOKEN@huggingface.co/spaces/Jaynaik2526/personal-finance-tracker huggingface-deploy:main

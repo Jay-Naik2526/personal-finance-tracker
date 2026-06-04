@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { FileText, Calendar, Download } from 'lucide-react';
+import { FileText, Calendar, Download, Zap } from 'lucide-react';
 
 const Reports = () => {
     const [startDate, setStartDate] = useState('');
@@ -12,172 +12,116 @@ const Reports = () => {
     const generatePDF = async (period) => {
         setLoading(true);
         try {
-            // Determine dates based on period
-            let start = startDate;
-            let end = endDate;
+            let start = startDate, end = endDate;
             const today = new Date();
+            if (period === 'daily')   { start = end = today.toISOString().split('T')[0]; }
+            else if (period === 'monthly') { start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]; end = today.toISOString().split('T')[0]; }
+            if (!start || !end) { alert('Please select a date range.'); setLoading(false); return; }
 
-            if (period === 'daily') {
-                start = today.toISOString().split('T')[0];
-                end = today.toISOString().split('T')[0];
-            } else if (period === 'monthly') {
-                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-                start = firstDay.toISOString().split('T')[0];
-                end = today.toISOString().split('T')[0];
-            }
-
-            if (!start || !end) {
-                alert('Please select a date range or one of the presets.');
-                setLoading(false);
-                return;
-            }
-
-            // Fetch Data
-            // We need a route to get filtered transactions. Utilizing existing or fetching all and filtering?
-            // Let's assume fetching all and filtering client side for now to avoid backend changes if possible.
-            // Actually, backend filtering is better but we have a simple GET /. Let's use that.
             const res = await axios.get('/api/transactions');
-            const allTransactions = res.data;
+            const filtered = res.data.filter(t => { const d = t.date.split('T')[0]; return d >= start && d <= end && t.category !== 'Balance Adjustment'; });
 
-            const filtered = allTransactions.filter(t => {
-                const d = t.date.split('T')[0];
-                return d >= start && d <= end && t.category !== 'Balance Adjustment';
-            });
-
-            // Generate PDF
             const doc = new jsPDF();
-
-            // Header
-            doc.setFillColor(5, 5, 17); // Background-ish
-            doc.rect(0, 0, 210, 297, 'F'); // Dark background? No, PDF standard white is better for printing.
-
-            // Standard White Report
-            doc.setFillColor(255, 255, 255);
-            doc.rect(0, 0, 210, 297, 'F');
-
-            // Gradient Header emulation
-            doc.setFillColor(99, 102, 241); // Indigo
-            doc.rect(0, 0, 210, 40, 'F');
-
+            doc.setFillColor(15, 15, 15);
+            doc.rect(0, 0, 210, 36, 'F');
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(22);
-            doc.setFont("helvetica", "bold");
-            doc.text("Expense Report", 14, 25);
+            doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+            doc.text('Vault — Finance Report', 14, 22);
+            doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+            doc.text(`Period: ${start}  →  ${end}`, 14, 30);
 
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            doc.text(`Period: ${start} to ${end}`, 14, 32);
+            const totalSpent  = filtered.reduce((s, t) => s + (t.type === 'expense' ? t.amount : 0), 0);
+            const totalIncome = filtered.reduce((s, t) => s + (t.type === 'income'  ? t.amount : 0), 0);
 
-            // Summary
-            const total = filtered.reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0);
-            const income = filtered.reduce((sum, t) => sum + (t.type === 'income' ? t.amount : 0), 0);
-
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(12);
-            doc.text(`Total Spent: Rs. ${total.toLocaleString()}`, 14, 50);
-            doc.text(`Total Income: Rs. ${income.toLocaleString()}`, 100, 50);
-
-            // Table
-            const tableColumn = ["Date", "Description", "Category", "Source", "Amount (Rs)"];
-            const tableRows = [];
-
-            filtered.forEach(t => {
-                const tData = [
-                    new Date(t.date).toLocaleDateString(),
-                    t.description || t.merchant || '-',
-                    t.category,
-                    t.source,
-                    (t.type === 'expense' ? '-' : '+') + t.amount.toLocaleString()
-                ];
-                tableRows.push(tData);
-            });
+            doc.setTextColor(30, 30, 30);
+            doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+            doc.text(`Total Spent:  Rs. ${totalSpent.toLocaleString('en-IN')}`,  14, 48);
+            doc.text(`Total Income: Rs. ${totalIncome.toLocaleString('en-IN')}`, 110, 48);
 
             autoTable(doc, {
-                head: [tableColumn],
-                body: tableRows,
-                startY: 60,
-                theme: 'grid',
-                headStyles: { fillColor: [99, 102, 241] },
-                alternateRowStyles: { fillColor: [245, 247, 250] }
+                head: [['Date', 'Description', 'Category', 'Source', 'Amount (Rs)']],
+                body: filtered.map(t => [
+                    new Date(t.date).toLocaleDateString('en-IN'),
+                    t.description || t.merchant || '—',
+                    t.category, t.source,
+                    `${t.type === 'expense' ? '−' : '+'}${t.amount.toLocaleString('en-IN')}`,
+                ]),
+                startY: 56, theme: 'grid',
+                headStyles: { fillColor: [15, 15, 15], fontSize: 9 },
+                bodyStyles: { fontSize: 9 },
+                alternateRowStyles: { fillColor: [247, 243, 236] },
             });
 
-            doc.save(`Finance_Report_${start}_${end}.pdf`);
-
-        } catch (err) {
-            console.error(err);
-            alert('Error generating report');
-        } finally {
-            setLoading(false);
-        }
+            doc.save(`Vault_Report_${start}_to_${end}.pdf`);
+        } catch (err) { console.error(err); alert('Error generating report'); }
+        finally { setLoading(false); }
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 animate-fade-in-up">
-            <header>
-                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-2">Reports</h2>
-                <p className="text-muted">Export your financial data in professional PDF formats.</p>
-            </header>
+        <div className="max-w-3xl mx-auto space-y-5 animate-fade-in-up">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Quick Export */}
-                <div className="glass-card p-6">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                        <FileText size={20} className="text-primary" /> Quick Export
-                    </h3>
-                    <div className="space-y-4">
-                        <button
-                            onClick={() => generatePDF('daily')}
-                            disabled={loading}
-                            className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-between px-6 transition-all group"
-                        >
-                            <span className="text-white font-medium">Daily Report (Today)</span>
-                            <Download size={18} className="text-muted group-hover:text-primary transition-colors" />
-                        </button>
-                        <button
-                            onClick={() => generatePDF('monthly')}
-                            disabled={loading}
-                            className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-between px-6 transition-all group"
-                        >
-                            <span className="text-white font-medium">Monthly Report (This Month)</span>
-                            <Download size={18} className="text-muted group-hover:text-primary transition-colors" />
-                        </button>
+            <div className="pt-2 pb-1 border-b border-rule">
+                <div className="data-label mb-1">Export Data</div>
+                <h1 className="page-title">Reports</h1>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="panel p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Zap size={13} className="text-ink" />
+                        <div className="data-label">Quick Export</div>
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { label: "Today's Report", period: 'daily',   desc: 'All transactions from today' },
+                            { label: 'Monthly Report',  period: 'monthly', desc: 'This month so far' },
+                        ].map(({ label, period, desc }) => (
+                            <button key={period} onClick={() => generatePDF(period)} disabled={loading}
+                                className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border border-rule hover:border-ink/20 hover:bg-parchment transition-all group">
+                                <div className="text-left">
+                                    <div className="text-ink text-sm font-semibold">{label}</div>
+                                    <div className="text-sub text-xs mt-0.5">{desc}</div>
+                                </div>
+                                <Download size={14} className="text-dim group-hover:text-ink transition-colors" />
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* Custom Range */}
-                <div className="glass-card p-6">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                        <Calendar size={20} className="text-accent" /> Custom Range
-                    </h3>
-                    <div className="space-y-4">
+                <div className="panel p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Calendar size={13} className="text-warn" />
+                        <div className="data-label">Custom Date Range</div>
+                    </div>
+                    <div className="space-y-3">
                         <div>
-                            <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Start Date</label>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="glass-input w-full text-white/80"
-                            />
+                            <label className="data-label block mb-2">From</label>
+                            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field-input w-full" />
                         </div>
                         <div>
-                            <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">End Date</label>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="glass-input w-full text-white/80"
-                            />
+                            <label className="data-label block mb-2">To</label>
+                            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field-input w-full" />
                         </div>
-                        <button
-                            onClick={() => generatePDF('custom')}
-                            disabled={loading}
-                            className="w-full py-4 rounded-xl bg-gradient-to-r from-accent to-rose-600/80 hover:from-accent/90 hover:to-rose-600 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-accent/20 mt-4 transition-all"
-                        >
-                            {loading ? 'Generating...' : 'Download Custom PDF'}
-                            <Download size={18} />
+                        <button onClick={() => generatePDF('custom')} disabled={loading || !startDate || !endDate}
+                            className="w-full flex items-center justify-center gap-2 bg-ink hover:bg-neutral-700 disabled:opacity-40 text-white font-semibold py-3 rounded-lg transition-all text-sm mt-1">
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Generating…
+                                </span>
+                            ) : (
+                                <><Download size={14} /> Download PDF</>
+                            )}
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <div className="panel p-4 flex items-start gap-3">
+                <FileText size={14} className="text-sub mt-0.5 flex-shrink-0" />
+                <p className="text-sub text-xs leading-relaxed">
+                    Reports include all transactions in the selected date range, excluding balance adjustments. The PDF is formatted with a dark header, summary totals, and a complete transaction table.
+                </p>
             </div>
         </div>
     );

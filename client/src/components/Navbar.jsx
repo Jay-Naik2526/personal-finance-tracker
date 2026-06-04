@@ -1,169 +1,377 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Wallet, ReceiptText, PieChart, Users, Menu, FileText, LogOut, Zap, Target, X, ShoppingBag } from 'lucide-react';
+import {
+    LayoutGrid, Wallet, Target, PieChart, Plus, MoreHorizontal,
+    FileText, Users, Zap, ShoppingBag, LogOut, X, ReceiptText, Compass
+} from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
+
+const getInitial = (name) => (name ? name.charAt(0).toUpperCase() : 'U');
+
+const primaryNav = [
+    { path: '/', label: 'Overview', icon: LayoutGrid },
+    { path: '/budgets', label: 'Budgets', icon: Wallet },
+    { path: '/savings', label: 'Savings', icon: Target },
+    { path: '/analytics', label: 'Analytics', icon: PieChart },
+];
+
+const moreNav = [
+    { path: '/split', label: 'Split Bill', icon: Users },
+    { path: '/wishlist', label: 'Wishlist', icon: ShoppingBag },
+    { path: '/subscriptions', label: 'Subscriptions', icon: Zap },
+    { path: '/reports', label: 'Reports', icon: FileText },
+    { path: '/debts', label: 'Debts', icon: ReceiptText },
+];
+
+const allNav = [...primaryNav, ...moreNav];
+
+const iconTints = {
+    '/':              { bg: 'bg-blue-50',   text: 'text-blue-600' },
+    '/budgets':       { bg: 'bg-green-50',  text: 'text-green-600' },
+    '/savings':       { bg: 'bg-purple-50', text: 'text-purple-600' },
+    '/analytics':     { bg: 'bg-amber-50',  text: 'text-amber-600' },
+    '/split':         { bg: 'bg-pink-50',   text: 'text-pink-600' },
+    '/wishlist':      { bg: 'bg-red-50',    text: 'text-red-500' },
+    '/subscriptions': { bg: 'bg-indigo-50', text: 'text-indigo-600' },
+    '/reports':       { bg: 'bg-teal-50',   text: 'text-teal-600' },
+    '/debts':         { bg: 'bg-orange-50', text: 'text-orange-600' },
+};
 
 const Navbar = () => {
     const location = useLocation();
-    const { logout } = useContext(AuthContext);
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { logout, user } = useContext(AuthContext);
+    const [radialOpen, setRadialOpen] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [hoveredLabel, setHoveredLabel] = useState('');
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-    // Primary mobile nav items (Critical actions)
-    const mobilePrimaryItems = [
-        { path: '/', label: 'Home', icon: <LayoutDashboard size={20} /> },
-        { path: '/savings', label: 'Save', icon: <Target size={20} /> },
-        { path: '/add', label: 'Add', icon: <ReceiptText size={24} />, isFab: true },
-        { path: '/budgets', label: 'Budget', icon: <Wallet size={20} /> },
+    const isActive = (path) => location.pathname === path;
+    const currentPage = allNav.find(n => n.path === location.pathname)?.label || 'Overview';
+
+    // Track window resize for responsive dial coordinates
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Close radial menu on navigation
+    useEffect(() => {
+        setRadialOpen(false);
+    }, [location.pathname]);
+
+    // Define positions for desktop radial items
+    const innerItems = [
+        { path: '/', label: 'Overview', icon: LayoutGrid, angle: 180 },
+        { path: '/budgets', label: 'Budgets', icon: Wallet, angle: 202.5 },
+        { path: '/savings', label: 'Savings', icon: Target, angle: 225 },
+        { path: '/analytics', label: 'Analytics', icon: PieChart, angle: 247.5 },
+        { path: '/add', label: 'Add Transaction', icon: Plus, angle: 270, isAdd: true }
     ];
 
-    // Secondary items for the "More" menu
-    const menuItems = [
-        { path: '/wishlist', label: 'Wishlist Check', icon: <ShoppingBag size={20} /> },
-        { path: '/split', label: 'Split Bill', icon: <Users size={20} /> },
-        { path: '/analytics', label: 'Analytics', icon: <PieChart size={20} /> },
-        { path: '/reports', label: 'Reports', icon: <FileText size={20} /> },
-        { path: '/debts', label: 'Debts', icon: <Users size={20} /> },
-        { path: '/subscriptions', label: 'Subscriptions', icon: <Zap size={20} /> },
+    const outerItems = [
+        { path: '/split', label: 'Split Bill', icon: Users, angle: 180 },
+        { path: '/wishlist', label: 'Wishlist', icon: ShoppingBag, angle: 202.5 },
+        { path: '/subscriptions', label: 'Subscriptions', icon: Zap, angle: 225 },
+        { path: '/reports', label: 'Reports', icon: FileText, angle: 247.5 },
+        { path: '/debts', label: 'Debts', icon: ReceiptText, angle: 270 }
     ];
 
-    // Desktop shows everything
-    const desktopItems = [
-        { path: '/', label: 'Overview', icon: <LayoutDashboard size={20} /> },
-        { path: '/add', label: 'Add Transaction', icon: <ReceiptText size={20} /> },
-        { path: '/budgets', label: 'Budgets', icon: <Wallet size={20} /> },
-        { path: '/savings', label: 'Savings', icon: <Target size={20} /> },
-        { path: '/split', label: 'Split Bill', icon: <Users size={20} /> },
-        { path: '/wishlist', label: 'Wishlist', icon: <ShoppingBag size={20} /> },
-        { path: '/subscriptions', label: 'Subscriptions', icon: <Zap size={20} /> },
-        { path: '/analytics', label: 'Analytics', icon: <PieChart size={20} /> },
-        { path: '/reports', label: 'Reports', icon: <FileText size={20} /> },
-        { path: '/debts', label: 'Debts', icon: <Users size={20} /> },
+    // Define positions for mobile radial items (vertical stack heights above trigger)
+    const mobileItems = [
+        { path: '/', label: 'Overview', icon: LayoutGrid, mobileY: 65 },
+        { path: '/budgets', label: 'Budgets', icon: Wallet, mobileY: 120 },
+        { path: '/savings', label: 'Savings', icon: Target, mobileY: 175 },
+        { path: '/analytics', label: 'Analytics', icon: PieChart, mobileY: 230 },
+        { label: 'More', icon: MoreHorizontal, mobileY: 285, isMore: true }
     ];
+
+    const getRadialStyles = (angle, radius, isOpen, index, mobileY) => {
+        if (isMobile) {
+            // Mobile: Vertical stack directly above the trigger
+            return {
+                transform: isOpen
+                    ? `translate(0, -${mobileY}px) scale(1)`
+                    : 'translate(0, 0) scale(0.3)',
+                opacity: isOpen ? 1 : 0,
+                transitionDelay: isOpen ? `${index * 35}ms` : '0ms',
+                pointerEvents: isOpen ? 'auto' : 'none'
+            };
+        } else {
+            // Desktop: Circular radial orbits
+            const angleRad = (angle * Math.PI) / 180;
+            const x = radius * Math.cos(angleRad);
+            const y = radius * Math.sin(angleRad);
+            return {
+                transform: isOpen
+                    ? `translate(${x}px, ${y}px) scale(1)`
+                    : 'translate(0, 0) scale(0.3)',
+                opacity: isOpen ? 1 : 0,
+                transitionDelay: isOpen ? `${index * 35}ms` : '0ms',
+                pointerEvents: isOpen ? 'auto' : 'none'
+            };
+        }
+    };
+
+    // Calculate dynamic coordinates/dimensions based on screen type (Desktop Only)
+    const svgTranslate = 'translate(36px, 36px)';
+    const svgPathInner = "M -36 -36 A 170 170 0 0 0 -206 -36";
+    const svgPathOuter = "M -36 -36 A 260 260 0 0 0 -296 -36";
 
     return (
         <>
-            {/* Mobile Bottom Nav */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-slate-900/90 backdrop-blur-xl border-t border-white/5 flex justify-around items-center z-50 px-2 animate-slide-up pb-2">
-                {mobilePrimaryItems.map((item) => (
-                    item.isFab ? (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-indigo-500 shadow-lg shadow-primary/40 flex items-center justify-center text-white -mt-6 hover:scale-105 transition-transform"
-                        >
-                            {item.icon}
-                        </Link>
-                    ) : (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={`flex flex-col items-center gap-1 p-2 transition-all duration-300 ${location.pathname === item.path
-                                ? 'text-primary'
-                                : 'text-muted hover:text-white'
-                                }`}
-                        >
-                            {item.icon}
-                            <span className="text-[10px] font-medium">{item.label}</span>
-                        </Link>
-                    )
-                ))}
+            {/* ─── WATERMARK LOGO (FLOATS TOP-LEFT ON ALL SCREENS) ──────────────── */}
+            <div className="fixed top-5 left-5 md:top-6 md:left-6 z-50 flex items-center gap-2.5 bg-surface/80 backdrop-blur-md border border-border px-3.5 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-card select-none">
+                <div className="w-5 h-5 md:w-6 md:h-6 bg-ink rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-[8px] md:text-[9px] font-bold">FT</span>
+                </div>
+                <span className="text-ink font-extrabold text-[12px] md:text-[13px] tracking-tight">Vault</span>
+            </div>
 
-                {/* Menu Button */}
-                <button
-                    onClick={() => setIsMenuOpen(true)}
-                    className="flex flex-col items-center gap-1 p-2 text-muted hover:text-white transition-colors"
+            {/* ─── DIRECT ADD TRANSACTION FAB (FLOATS BOTTOM-LEFT ON MOBILE) ──────── */}
+            {isMobile && (
+                <Link
+                    to="/add"
+                    className="fixed bottom-8 left-8 z-[95] w-14 h-14 bg-ink text-white rounded-full flex items-center justify-center shadow-xl border border-border/10 transition-all hover:scale-105 active:scale-95 shadow-ink/20"
                 >
-                    <Menu size={20} />
-                    <span className="text-[10px] font-medium">More</span>
-                </button>
-            </nav>
+                    <Plus size={24} strokeWidth={2.5} />
+                </Link>
+            )}
 
-            {/* Mobile Menu Drawer */}
-            {isMenuOpen && (
-                <div className="fixed inset-0 z-[60] md:hidden">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-slate-900 border-t border-white/10 rounded-t-3xl p-6 animate-slide-up-fast">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-white">Menu</h3>
-                            <button onClick={() => setIsMenuOpen(false)} className="p-2 bg-white/5 rounded-full text-muted">
-                                <X size={20} />
+            {/* ─── BLURRY BACKDROP BLUR FOR RADIAL OPEN ──────────────────────────── */}
+            <div
+                onClick={() => setRadialOpen(false)}
+                className={`fixed inset-0 bg-ink/10 backdrop-blur-[2px] transition-opacity duration-300 z-[90] ${
+                    radialOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                }`}
+            />
+
+            {/* ─── HUD RADIAL DIAL MENU (ALL SCREENS) ────────── */}
+            <div className={`fixed z-[100] w-0 h-0 transition-all duration-300 ${
+                isMobile ? 'bottom-8 right-8' : 'bottom-12 right-12'
+            }`}>
+                
+                {/* HUD Orbital Connection Lines (SVG) - Desktop Only */}
+                {!isMobile && (
+                    <svg className={`absolute bottom-0 right-0 pointer-events-none transition-all duration-700 ease-out ${
+                        radialOpen ? 'opacity-40 scale-100' : 'opacity-0 scale-75'
+                    } w-[340px] h-[340px]`} style={{ transform: svgTranslate }}>
+                        <path
+                            d={svgPathInner}
+                            fill="none"
+                            className="stroke-sub stroke-[2] stroke-dashed"
+                            strokeDasharray="5 5"
+                        />
+                        <path
+                            d={svgPathOuter}
+                            fill="none"
+                            className="stroke-sub stroke-[2]"
+                            strokeDasharray="8 4"
+                        />
+                    </svg>
+                )}
+
+                {/* MOBILE VIEW NAVIGATION RING (Vertical Stack List with Labels on Left) */}
+                {isMobile && mobileItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const active = item.path && isActive(item.path);
+                    
+                    const triggerAction = () => {
+                        if (item.isMore) {
+                            setDrawerOpen(true);
+                            setRadialOpen(false);
+                        }
+                    };
+
+                    return (
+                        <React.Fragment key={index}>
+                            {item.path ? (
+                                <Link
+                                    to={item.path}
+                                    style={getRadialStyles(item.angle, 0, radialOpen, index, item.mobileY)}
+                                    className="absolute bottom-0 right-0 flex items-center justify-end gap-3 -mr-[22px] -mb-[22px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                                >
+                                    <span className={`bg-surface border border-border px-3 py-1.5 rounded-xl text-ink text-[11px] font-bold shadow-md transition-all duration-300 whitespace-nowrap ${
+                                        radialOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'
+                                    }`}>
+                                        {item.label}
+                                    </span>
+                                    <div className={`w-11 h-11 rounded-full flex items-center justify-center border shadow-lg ${
+                                        active
+                                            ? 'bg-ink border-ink text-white'
+                                            : 'bg-surface border-border text-sub hover:text-ink'
+                                    }`}>
+                                        <Icon size={16} strokeWidth={2.5} />
+                                    </div>
+                                </Link>
+                            ) : (
+                                <button
+                                    onClick={triggerAction}
+                                    style={getRadialStyles(item.angle, 0, radialOpen, index, item.mobileY)}
+                                    className="absolute bottom-0 right-0 flex items-center justify-end gap-3 -mr-[22px] -mb-[22px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                                >
+                                    <span className={`bg-surface border border-border px-3 py-1.5 rounded-xl text-ink text-[11px] font-bold shadow-md transition-all duration-300 whitespace-nowrap ${
+                                        radialOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'
+                                    }`}>
+                                        {item.label}
+                                    </span>
+                                    <div className="w-11 h-11 rounded-full flex items-center justify-center border shadow-lg bg-surface border-border text-sub hover:text-ink">
+                                        <Icon size={16} strokeWidth={2.5} />
+                                    </div>
+                                </button>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
+
+                {/* DESKTOP VIEW NAVIGATION RING (Double Rings) */}
+                {!isMobile && innerItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.path);
+                    
+                    return (
+                        <Link
+                            key={item.path}
+                            to={item.path}
+                            style={getRadialStyles(item.angle, 170, radialOpen, index)}
+                            onMouseEnter={() => setHoveredLabel(item.label)}
+                            onMouseLeave={() => setHoveredLabel('')}
+                            className={`absolute w-14 h-14 -ml-7 -mt-7 rounded-full flex items-center justify-center border shadow-lg transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-115 active:scale-95 ${
+                                item.isAdd
+                                    ? 'bg-ink border-ink text-white hover:bg-ink/80 shadow-ink/20 shadow-xl'
+                                    : active
+                                        ? 'bg-ink border-ink text-white'
+                                        : 'bg-surface border-border text-sub hover:text-ink hover:border-border-strong'
+                            }`}
+                        >
+                            <Icon size={20} strokeWidth={2.5} />
+                        </Link>
+                    );
+                })}
+
+                {/* DESKTOP VIEW OUTER RING */}
+                {!isMobile && outerItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.path);
+                    
+                    return (
+                        <Link
+                            key={item.path}
+                            to={item.path}
+                            style={getRadialStyles(item.angle, 260, radialOpen, index)}
+                            onMouseEnter={() => setHoveredLabel(item.label)}
+                            onMouseLeave={() => setHoveredLabel('')}
+                            className={`absolute w-12 h-12 -ml-6 -mt-6 rounded-full flex items-center justify-center border shadow-md transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-115 active:scale-95 ${
+                                active
+                                    ? 'bg-ink border-ink text-white'
+                                    : 'bg-surface border-border text-sub hover:text-ink hover:border-border-strong'
+                            }`}
+                        >
+                            <Icon size={16} />
+                        </Link>
+                    );
+                })}
+
+                {/* DESKTOP VIEW LOGOUT QUICK TRIGGER */}
+                {!isMobile && (
+                    <button
+                        onClick={logout}
+                        title="Sign Out"
+                        style={getRadialStyles(148, 260, radialOpen, 5)}
+                        onMouseEnter={() => setHoveredLabel('Sign Out')}
+                        onMouseLeave={() => setHoveredLabel('')}
+                        className="absolute w-12 h-12 -ml-6 -mt-6 rounded-full flex items-center justify-center border border-red-100 bg-red-50 text-red-600 shadow-md transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-red-100 hover:scale-115 active:scale-95"
+                    >
+                        <LogOut size={16} />
+                    </button>
+                )}
+
+                {/* CORE DIAL TRIGGER BUTTON */}
+                <button
+                    onClick={() => setRadialOpen(!radialOpen)}
+                    onMouseEnter={() => !radialOpen && setHoveredLabel('Navigation Menu')}
+                    onMouseLeave={() => setHoveredLabel('')}
+                    className={`absolute rounded-full flex items-center justify-center shadow-xl border transition-all duration-500 z-50 group ${
+                        isMobile
+                            ? 'w-14 h-14 -ml-7 -mt-7'
+                            : 'w-18 h-18 -ml-9 -mt-9'
+                    } ${
+                        radialOpen
+                            ? 'bg-ink border-ink text-white rotate-180 scale-105'
+                            : 'bg-surface border-border text-ink hover:border-border-strong hover:scale-105'
+                    }`}
+                >
+                    {radialOpen ? (
+                        <X size={isMobile ? 20 : 24} strokeWidth={2.5} className="animate-in" />
+                    ) : (
+                        <div className="relative w-full h-full flex items-center justify-center">
+                            {/* Ambient Pulsing outer ring */}
+                            <span className="absolute inset-0 rounded-full border border-ink/10 animate-ping opacity-75" />
+                            {/* Navigation Compass Icon */}
+                            <Compass size={isMobile ? 26 : 32} strokeWidth={2} className="text-ink transition-transform duration-700 ease-out group-hover:rotate-45" />
+                        </div>
+                    )}
+                </button>
+
+                {/* Info HUD Label (Fades in on hover, positioned at the top-left of the HUD hub clear of any rings) - Desktop Only */}
+                {!isMobile && (
+                    <div className={`absolute bg-ink text-white font-bold px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10 whitespace-nowrap transition-all duration-300 pointer-events-none tracking-wide z-[120] bottom-[310px] right-[20px] text-[13px] ${
+                        radialOpen && hoveredLabel ? 'opacity-100 -translate-y-3' : 'opacity-0 translate-y-0'
+                    }`}>
+                        {hoveredLabel}
+                    </div>
+                )}
+            </div>
+
+            {/* ─── MOBILE DRAWER (SLIDE-UP FROM BOTTOM FOR 'MORE' LINKS) ───────── */}
+            {drawerOpen && (
+                <div className="fixed inset-0 z-[110] md:hidden">
+                    <div className="absolute inset-0 bg-ink/20 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
+                    <div className="absolute inset-x-0 bottom-0 bg-surface rounded-t-3xl p-5 shadow-float animate-slide-up">
+                        <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
+
+                        <div className="grid grid-cols-4 gap-3 mb-5">
+                            {allNav.map(({ path, label, icon: Icon }) => {
+                                const tint = iconTints[path] || { bg: 'bg-gray-50', text: 'text-gray-600' };
+                                const active = isActive(path);
+                                return (
+                                    <Link
+                                        key={path}
+                                        to={path}
+                                        onClick={() => setDrawerOpen(false)}
+                                        className="flex flex-col items-center gap-1.5"
+                                    >
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                                            active ? 'bg-ink text-white' : `${tint.bg} ${tint.text}`
+                                        }`}>
+                                            <Icon size={20} />
+                                        </div>
+                                        <span className="text-[10px] text-sub font-semibold text-center leading-tight">{label}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+
+                        <div className="border-t border-border pt-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-ink flex items-center justify-center text-white text-xs font-bold">
+                                    {getInitial(user?.username)}
+                                </div>
+                                <div>
+                                    <div className="text-ink text-sm font-semibold">{user?.username || 'User'}</div>
+                                    <div className="text-sub text-[10px]">{user?.email || ''}</div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={logout}
+                                className="flex items-center gap-1.5 text-neg text-xs font-semibold px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 transition-all"
+                            >
+                                <LogOut size={13} /> Sign Out
                             </button>
                         </div>
-
-                        <div className="grid grid-cols-4 gap-4 mb-8">
-                            {menuItems.map(item => (
-                                <Link
-                                    key={item.path}
-                                    to={item.path}
-                                    onClick={() => setIsMenuOpen(false)}
-                                    className="flex flex-col items-center gap-2"
-                                >
-                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white transition-all ${location.pathname === item.path ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-white/5 hover:bg-white/10'}`}>
-                                        {item.icon}
-                                    </div>
-                                    <span className="text-xs text-muted font-medium text-center">{item.label}</span>
-                                </Link>
-                            ))}
-                        </div>
-
-                        <button
-                            onClick={logout}
-                            className="w-full py-4 rounded-xl bg-rose-500/10 text-rose-400 font-bold flex items-center justify-center gap-2 hover:bg-rose-500/20 transition-colors"
-                        >
-                            <LogOut size={20} /> Logout
-                        </button>
                     </div>
                 </div>
             )}
-
-            {/* Desktop Sidebar */}
-            <nav className="hidden md:flex flex-col w-72 h-screen p-6 fixed left-0 top-0 z-50">
-                <div className="glass-card h-full w-full flex flex-col p-6">
-                    <div className="flex items-center gap-3 mb-10 px-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-accent flex items-center justify-center font-bold text-white">
-                            FT
-                        </div>
-                        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
-                            FinanceTrack
-                        </h1>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        {desktopItems.map((item) => (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                className={`flex items-center p-3 rounded-xl transition-all duration-300 group ${location.pathname === item.path
-                                    ? 'bg-primary/20 text-white border border-primary/20 shadow-lg shadow-primary/5'
-                                    : 'text-muted hover:text-white hover:bg-white/5'
-                                    }`}
-                            >
-                                <span className={`mr-3 transition-colors ${location.pathname === item.path ? 'text-primary' : 'text-muted group-hover:text-white'}`}>
-                                    {item.icon}
-                                </span>
-                                <span className="font-medium text-sm tracking-wide">{item.label}</span>
-
-                            </Link>
-                        ))}
-                        <button
-                            onClick={logout}
-                            className="flex items-center p-3 rounded-xl transition-all duration-300 group text-muted hover:text-rose-400 hover:bg-rose-500/10 mt-auto"
-                        >
-                            <span className="mr-3 transition-colors text-muted group-hover:text-rose-400">
-                                <LogOut size={20} />
-                            </span>
-                            <span className="font-medium text-sm tracking-wide">Logout</span>
-                        </button>
-                    </div>
-
-                    <div className="pt-6 border-t border-white/5 text-xs text-muted/50 text-center">
-                        v1.0.0 Student Edition
-                    </div>
-                </div>
-            </nav>
-
-            {/* Spacer for desktop layout since nav is fixed */}
-            <div className="hidden md:block w-72 flex-shrink-0"></div>
         </>
     );
 };

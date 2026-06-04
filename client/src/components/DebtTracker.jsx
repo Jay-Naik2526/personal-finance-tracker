@@ -6,124 +6,78 @@ const DebtTracker = () => {
     const [debts, setDebts] = useState([]);
     const [form, setForm] = useState({ person: '', amount: '', type: 'owed_to' });
 
-    useEffect(() => {
-        fetchDebts();
-    }, []);
-
-    const fetchDebts = async () => {
-        try {
-            const res = await axios.get('/api/debts');
-            setDebts(res.data);
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
+    useEffect(() => { fetchDebts(); }, []);
+    const fetchDebts = async () => { try { const r = await axios.get('/api/debts'); setDebts(r.data); } catch (e) { console.error(e); } };
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            await axios.post('/api/debts', form);
-            setForm({ person: '', amount: '', type: 'owed_to' });
-            fetchDebts();
-        } catch (err) {
-            alert('Error saving debt');
-        }
+        try { await axios.post('/api/debts', form); setForm({ person: '', amount: '', type: 'owed_to' }); fetchDebts(); }
+        catch { alert('Error saving'); }
     };
+    const settleDebt = async (id) => { try { await axios.patch(`/api/debts/${id}`, { status: 'settled' }); fetchDebts(); } catch { alert('Error'); } };
+    const deleteDebt = async (id) => { try { await axios.delete(`/api/debts/${id}`); fetchDebts(); } catch { alert('Error'); } };
 
-    const settleDebt = async (id) => {
-        try {
-            await axios.patch(`/api/debts/${id}`, { status: 'settled' });
-            fetchDebts();
-        } catch (err) {
-            alert('Error updating debt');
-        }
-    };
-
-    const deleteDebt = async (id) => {
-        try {
-            await axios.delete(`/api/debts/${id}`);
-            fetchDebts();
-        } catch (err) {
-            alert('Error deleting debt');
-        }
-    };
+    const receivables = debts.filter(d => d.type === 'owed_by');
+    const payables    = debts.filter(d => d.type === 'owed_to');
+    const totalRec = receivables.filter(d => d.status !== 'settled').reduce((s, d) => s + d.amount, 0);
+    const totalPay = payables.filter(d => d.status !== 'settled').reduce((s, d) => s + d.amount, 0);
 
     return (
-        <div className="space-y-8 animate-fade-in-up">
-            <header>
-                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-2">IOUs & Debts</h2>
-                <p className="text-muted">Track who owes you and who you owe.</p>
-            </header>
+        <div className="space-y-5 animate-fade-in-up">
+            <div className="pt-2">
+                <h1 className="page-title">IOUs & Debts</h1>
+                <p className="text-sub text-sm mt-1">Track who owes you and who you owe.</p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="glass-card p-6 flex flex-col md:flex-row gap-4 items-end">
-                <div className="w-full md:w-1/3">
-                    <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Name</label>
-                    <input
-                        type="text"
-                        value={form.person}
-                        onChange={(e) => setForm({ ...form, person: e.target.value })}
-                        className="glass-input w-full"
-                        placeholder="e.g. John Doe"
-                        required
-                    />
-                </div>
-                <div className="w-full md:w-1/4">
-                    <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Amount</label>
-                    <input
-                        type="number"
-                        value={form.amount}
-                        onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                        className="glass-input w-full"
-                        placeholder="0.00"
-                        required
-                    />
-                </div>
-                <div className="w-full md:w-1/4">
-                    <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Type</label>
-                    <select
-                        value={form.type}
-                        onChange={(e) => setForm({ ...form, type: e.target.value })}
-                        className="glass-input w-full appearance-none"
-                    >
-                        <option value="owed_to" className="bg-slate-900">I owe them</option>
-                        <option value="owed_by" className="bg-slate-900">They owe me</option>
-                    </select>
-                </div>
-                <button type="submit" className="w-full md:w-auto glass-button p-3 flex justify-center items-center h-[50px] w-[50px] !px-0 rounded-xl">
-                    <UserPlus size={20} />
-                </button>
-            </form>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <ArrowDownLeft size={16} /> Receivables
-                    </h3>
-                    <div className="space-y-4">
-                        {debts.filter(d => d.type === 'owed_by').map(debt => (
-                            <DebtCard key={debt._id} debt={debt} onSettle={settleDebt} onDelete={deleteDebt} />
-                        ))}
-                        {debts.filter(d => d.type === 'owed_by').filter(d => d.status !== 'settled').length === 0 && (
-                            <div className="p-6 rounded-xl border border-white/5 bg-white/5 text-center text-muted text-sm italic">
-                                Nobody owes you money right now.
-                            </div>
-                        )}
+            {debts.length > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="card p-4" style={{ background: '#F0FDF4' }}>
+                        <div className="label mb-1.5">To Receive</div>
+                        <div className="num text-xl text-green-700">₹{totalRec.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="card p-4" style={{ background: '#FEF2F2' }}>
+                        <div className="label mb-1.5">To Pay</div>
+                        <div className="num text-xl text-neg">₹{totalPay.toLocaleString('en-IN')}</div>
                     </div>
                 </div>
+            )}
 
+            <div className="card p-5">
+                <div className="label mb-4">Record New Debt</div>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <input type="text" value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })} className="field-input" placeholder="Person name" required />
+                    <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sub text-sm">₹</span>
+                        <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="field-input pl-8 w-full" placeholder="Amount" required />
+                    </div>
+                    <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="field-input appearance-none">
+                        <option value="owed_to" className="bg-surface">I owe them</option>
+                        <option value="owed_by" className="bg-surface">They owe me</option>
+                    </select>
+                    <button type="submit" className="bg-ink hover:bg-ink/85 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm">
+                        <UserPlus size={14} /> Add
+                    </button>
+                </form>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <div>
-                    <h3 className="text-sm font-bold text-rose-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <ArrowUpRight size={16} /> Payables
-                    </h3>
-                    <div className="space-y-4">
-                        {debts.filter(d => d.type === 'owed_to').map(debt => (
-                            <DebtCard key={debt._id} debt={debt} onSettle={settleDebt} onDelete={deleteDebt} />
-                        ))}
-                        {debts.filter(d => d.type === 'owed_to').filter(d => d.status !== 'settled').length === 0 && (
-                            <div className="p-6 rounded-xl border border-white/5 bg-white/5 text-center text-muted text-sm italic">
-                                You are debt free! 🎉
-                            </div>
-                        )}
+                    <div className="flex items-center gap-2 mb-3">
+                        <ArrowDownLeft size={13} className="text-green-600" />
+                        <span className="label text-green-700">They Owe You</span>
+                    </div>
+                    <div className="space-y-2">
+                        {receivables.map(d => <DebtRow key={d._id} debt={d} onSettle={settleDebt} onDelete={deleteDebt} />)}
+                        {receivables.length === 0 && <div className="card p-5 text-center text-sub text-sm">Nobody owes you right now.</div>}
+                    </div>
+                </div>
+                <div>
+                    <div className="flex items-center gap-2 mb-3">
+                        <ArrowUpRight size={13} className="text-neg" />
+                        <span className="label text-neg">You Owe Them</span>
+                    </div>
+                    <div className="space-y-2">
+                        {payables.map(d => <DebtRow key={d._id} debt={d} onSettle={settleDebt} onDelete={deleteDebt} />)}
+                        {payables.length === 0 && <div className="card p-5 text-center text-sub text-sm">You're debt free! 🎉</div>}
                     </div>
                 </div>
             </div>
@@ -131,44 +85,44 @@ const DebtTracker = () => {
     );
 };
 
-const DebtCard = ({ debt, onSettle, onDelete }) => (
-    <div className={`p-5 rounded-2xl border transition-all duration-300 ${debt.status === 'settled'
-            ? 'bg-black/20 border-white/5 opacity-50 grayscale'
-            : 'glass-card'
-        }`}>
-        <div className="flex justify-between items-center">
-            <div>
-                <div className="font-bold text-white text-lg">{debt.person}</div>
-                <div className="text-xs text-muted mb-2">{new Date(debt.date).toLocaleDateString()}</div>
-                <div className={`text-2xl font-bold font-mono tracking-tight ${debt.type === 'owed_by' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    ₹{debt.amount.toLocaleString()}
+const DebtRow = ({ debt, onSettle, onDelete }) => {
+    const isReceivable = debt.type === 'owed_by';
+    const isSettled    = debt.status === 'settled';
+    const tintBg = isReceivable ? '#F0FDF4' : '#FEF2F2';
+    const color  = isReceivable ? '#16A34A' : '#DC2626';
+
+    return (
+        <div className={`card px-4 py-3.5 flex items-center justify-between group ${isSettled ? 'opacity-40' : ''}`} style={{ background: tintBg }}>
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 bg-white/80"
+                    style={{ color }}>
+                    {debt.person.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                    <div className="text-ink text-sm font-semibold">{debt.person}</div>
+                    <div className="text-sub text-xs flex items-center gap-1.5">
+                        <span>{new Date(debt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                        {isSettled && <span className="chip-green py-0 px-1.5">Settled</span>}
+                    </div>
                 </div>
             </div>
-            <div className="flex flex-col gap-2">
-                {debt.status === 'pending' && (
-                    <button
-                        onClick={() => onSettle(debt._id)}
-                        className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded-lg transition-colors"
-                        title="Mark Settled"
-                    >
-                        <Check size={18} />
+            <div className="flex items-center gap-2">
+                <span className="num text-sm font-semibold" style={{ color }}>₹{debt.amount.toLocaleString('en-IN')}</span>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!isSettled && (
+                        <button onClick={() => onSettle(debt._id)}
+                            className="w-7 h-7 rounded-xl bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition-all">
+                            <Check size={12} />
+                        </button>
+                    )}
+                    <button onClick={() => onDelete(debt._id)}
+                        className="w-7 h-7 rounded-xl bg-white/80 text-dim hover:text-neg hover:bg-red-50 flex items-center justify-center transition-all">
+                        <Trash2 size={12} />
                     </button>
-                )}
-                <button
-                    onClick={() => onDelete(debt._id)}
-                    className="p-2 bg-white/5 hover:bg-rose-500/20 text-muted hover:text-rose-500 border border-white/5 hover:border-rose-500/20 rounded-lg transition-colors"
-                    title="Delete"
-                >
-                    <Trash2 size={18} />
-                </button>
+                </div>
             </div>
         </div>
-        {debt.status === 'settled' && (
-            <div className="mt-2 text-xs font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1">
-                <Check size={12} /> Settled
-            </div>
-        )}
-    </div>
-);
+    );
+};
 
 export default DebtTracker;

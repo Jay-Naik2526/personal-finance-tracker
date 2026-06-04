@@ -1,273 +1,179 @@
 import React, { useState } from 'react';
-import { ArrowRight, CheckCircle, AlertCircle, Wand2, Type, FileText } from 'lucide-react';
+import { ArrowRight, CheckCircle, Wand2, Type } from 'lucide-react';
 import axios from 'axios';
 
+const EXPENSE_CATS = ['Food/Canteen', 'Transport', 'Shopping', 'Social', 'Academics', 'Bills', 'Other'];
+const INCOME_CATS  = ['Allowance', 'Salary', 'Gift', 'Refund', 'Other'];
+
 const AddTransaction = () => {
-    const [activeTab, setActiveTab] = useState('manual'); // 'manual' or 'parser'
-
-    // Parser State
+    const [activeTab, setActiveTab] = useState('manual');
     const [text, setText] = useState('');
-    const [parsedMessage, setParsedMessage] = useState(null);
-
-    // Form State (Shared for both modes)
+    const [parsedMsg, setParsedMsg] = useState(null);
     const [form, setForm] = useState({
-        amount: '',
-        date: new Date().toISOString().split('T')[0],
-        merchant: '',
-        category: 'Uncategorized',
-        source: 'Online',
-        description: '',
-        type: 'expense'
+        amount: '', date: new Date().toISOString().split('T')[0],
+        merchant: '', category: 'Uncategorized', source: 'Online', description: '', type: 'expense',
     });
-
-    const categories = form.type === 'expense'
-        ? ['Food/Canteen', 'Transport', 'Shopping', 'Social', 'Academics', 'Bills', 'Other']
-        : ['Allowance', 'Salary', 'Gift', 'Refund', 'Other'];
-
     const [loading, setLoading] = useState(false);
-    const [successMessage, setSuccessMessage] = useState('');
+    const [success, setSuccess] = useState('');
 
-
+    const categories = form.type === 'expense' ? EXPENSE_CATS : INCOME_CATS;
 
     const parseSMS = () => {
-        let amount = 0;
-        let merchant = 'Unknown';
-        let date = new Date();
-        let found = false;
-
-        const amountRegex = /(?:Rs\.?|INR)\s*([\d,]+\.?\d*)/i;
-        const amountMatch = text.match(amountRegex);
-        if (amountMatch) {
-            amount = parseFloat(amountMatch[1].replace(/,/g, ''));
-            found = true;
-        }
-
-        const merchantRegex = /(?:at|to|Info:)\s+([A-Za-z0-9\s\.\-_]+?)(?:\s+on|[\.]|$)/i;
-        const merchantMatch = text.match(merchantRegex);
-        if (merchantMatch) {
-            merchant = merchantMatch[1].trim();
-        }
-
-        // Date extraction logic from before
-        const dateRegex = /(\d{2}[-\/]\d{2}[-\/]\d{2,4})|(\d{4}[-\/]\d{2}[-\/]\d{2})/;
-        const dateMatch = text.match(dateRegex);
-        if (dateMatch) {
-            try {
-                const dateStr = dateMatch[0];
-                date = new Date(dateStr);
-                if (isNaN(date.getTime())) {
-                    const parts = dateStr.split(/[-\/]/);
-                    if (parts.length === 3) {
-                        date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                    }
-                }
-            } catch (e) {
-                console.log(e);
-            }
-        }
-
+        let amount = 0, merchant = 'Unknown', date = new Date(), found = false;
+        const am = text.match(/(?:Rs\.?|INR)\s*([\d,]+\.?\d*)/i);
+        if (am) { amount = parseFloat(am[1].replace(/,/g, '')); found = true; }
+        const mm = text.match(/(?:at|to|Info:)\s+([A-Za-z0-9\s.\-_]+?)(?:\s+on|[.]|$)/i);
+        if (mm) merchant = mm[1].trim();
+        const dm = text.match(/(\d{2}[-\/]\d{2}[-\/]\d{2,4})|(\d{4}[-\/]\d{2}[-\/]\d{2})/);
+        if (dm) { try { date = new Date(dm[0]); if (isNaN(date.getTime())) { const p = dm[0].split(/[-\/]/); if (p.length === 3) date = new Date(`${p[2]}-${p[1]}-${p[0]}`); } } catch { } }
         if (found) {
-            setForm({
-                ...form,
-                amount: amount,
-                merchant: merchant,
-                date: date.toISOString().split('T')[0],
-                source: text.toLowerCase().includes('upi') ? 'Online' : 'Cash',
-                description: `Parsed: ${merchant}`
-            });
-            setParsedMessage({ type: 'success', text: 'Data extracted! Review below.' });
-            setActiveTab('manual'); // Switch to review/manual mode
+            setForm({ ...form, amount, merchant, date: date.toISOString().split('T')[0], source: text.toLowerCase().includes('upi') ? 'Online' : 'Cash', description: `Parsed: ${merchant}` });
+            setParsedMsg({ type: 'success', text: 'Data extracted! Review below.' });
+            setActiveTab('manual');
         } else {
-            setParsedMessage({ type: 'error', text: 'Could not extract amount.' });
+            setParsedMsg({ type: 'error', text: 'Could not extract amount.' });
         }
     };
 
     const handleSave = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+        e.preventDefault(); setLoading(true);
         try {
-            await axios.post('/api/transactions', {
-                ...form,
-                description: form.merchant, // standardizing
-            });
-            setSuccessMessage('Transaction saved successfully!');
-            setForm({
-                amount: '',
-                date: new Date().toISOString().split('T')[0],
-                merchant: '',
-                category: 'Uncategorized',
-                source: 'Online',
-                description: ''
-            });
+            await axios.post('/api/transactions', { ...form, description: form.merchant });
+            setSuccess('Transaction saved!');
+            setForm({ amount: '', date: new Date().toISOString().split('T')[0], merchant: '', category: 'Uncategorized', source: 'Online', description: '', type: 'expense' });
             setText('');
-            setTimeout(() => setSuccessMessage(''), 3000);
-        } catch (err) {
-            alert('Failed to save.');
-        } finally {
-            setLoading(false);
-        }
+            setTimeout(() => setSuccess(''), 3000);
+        } catch { alert('Failed to save.'); }
+        finally { setLoading(false); }
     };
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 animate-fade-in-up">
-            <header className="mb-8 text-center">
-                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-2">Add Transaction</h2>
-                <p className="text-muted">Manually enter a purchase or auto-scan an SMS.</p>
-            </header>
+        <div className="max-w-2xl mx-auto space-y-5 animate-fade-in-up">
 
-            {/* Tabs */}
-            <div className="flex p-1 bg-white/5 rounded-xl border border-white/5 mb-6">
-                <button
-                    onClick={() => setActiveTab('manual')}
-                    className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'manual' ? 'bg-primary text-white shadow-lg' : 'text-muted hover:text-white'
-                        }`}
-                >
-                    <Type size={18} /> Manual Entry
-                </button>
-                <button
-                    onClick={() => setActiveTab('parser')}
-                    className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'parser' ? 'bg-primary text-white shadow-lg' : 'text-muted hover:text-white'
-                        }`}
-                >
-                    <Wand2 size={18} /> Smart Parser
-                </button>
+            <div className="pt-2">
+                <h1 className="page-title">Add Transaction</h1>
+                <p className="text-sub text-sm mt-1">Record a payment or income manually, or scan an SMS.</p>
             </div>
 
-            {/* Notification */}
-            {successMessage && (
-                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center animate-in fade-in slide-in-from-top-2">
-                    <CheckCircle className="mr-3" size={20} /> {successMessage}
+            {/* Tabs */}
+            <div className="flex gap-1 p-1 bg-raised rounded-2xl">
+                {[
+                    { id: 'manual', label: 'Manual Entry', icon: Type },
+                    { id: 'parser', label: 'SMS Parser',   icon: Wand2 },
+                ].map(({ id, label, icon: Icon }) => (
+                    <button key={id} onClick={() => setActiveTab(id)}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                            activeTab === id ? 'bg-surface text-ink shadow-card' : 'text-sub hover:text-ink'
+                        }`}>
+                        <Icon size={14} /> {label}
+                    </button>
+                ))}
+            </div>
+
+            {success && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+                    <CheckCircle size={15} /> {success}
                 </div>
             )}
 
-            {/* Parser Tab */}
+            {/* SMS Parser */}
             {activeTab === 'parser' && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-left-4">
-                    <div className="glass-card p-1">
-                        <textarea
-                            className="w-full bg-transparent p-6 text-white placeholder-white/20 outline-none resize-none min-h-[150px] font-mono text-sm"
-                            placeholder="Paste SMS here..."
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
-                        ></textarea>
-                        <div className="border-t border-white/5 p-4 flex justify-end bg-white/5 rounded-b-xl">
-                            <button
-                                onClick={parseSMS}
-                                disabled={!text}
-                                className="glass-button flex items-center gap-2"
-                            >
-                                <Wand2 size={16} /> Extract Data
-                            </button>
-                        </div>
+                <div className="card overflow-hidden">
+                    <textarea
+                        className="w-full bg-transparent px-5 pt-5 pb-4 text-ink placeholder-dim outline-none resize-none min-h-[130px] font-mono text-sm leading-relaxed"
+                        placeholder="Paste your bank SMS here…&#10;e.g. Rs.500 debited at Swiggy on 01/06/25"
+                        value={text} onChange={(e) => setText(e.target.value)}
+                    />
+                    <div className="border-t border-border px-5 py-3.5 flex items-center justify-between bg-raised/50">
+                        {parsedMsg && (
+                            <span className={`text-xs font-medium ${parsedMsg.type === 'success' ? 'text-green-600' : 'text-neg'}`}>
+                                {parsedMsg.text}
+                            </span>
+                        )}
+                        <button onClick={parseSMS} disabled={!text}
+                            className="ml-auto flex items-center gap-2 bg-ink hover:bg-ink/85 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all">
+                            <Wand2 size={13} /> Extract
+                        </button>
                     </div>
-                    {parsedMessage && (
-                        <div className={`text-sm ${parsedMessage.type === 'success' ? 'text-emerald-400' : 'text-rose-400'} px-2`}>
-                            {parsedMessage.text}
-                        </div>
-                    )}
                 </div>
             )}
 
-            {/* Manual Form Tab (also used for review) */}
+            {/* Manual Form */}
             {activeTab === 'manual' && (
-                <form onSubmit={handleSave} className="glass-card p-8 animate-in fade-in slide-in-from-right-4">
+                <form onSubmit={handleSave} className="card p-5 space-y-5">
 
-                    {/* Type Toggle */}
-                    <div className="flex gap-4 mb-6">
-                        <button
-                            type="button"
-                            onClick={() => setForm({ ...form, type: 'expense' })}
-                            className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-all ${form.type === 'expense' ? 'bg-rose-500/20 border-rose-500 text-rose-400' : 'bg-white/5 border-transparent text-muted'}`}
-                        >
-                            Expense
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setForm({ ...form, type: 'income' })}
-                            className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-all ${form.type === 'income' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-white/5 border-transparent text-muted'}`}
-                        >
-                            Income
-                        </button>
+                    {/* Type toggle */}
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-raised rounded-xl">
+                        {['expense', 'income'].map((t) => (
+                            <button key={t} type="button"
+                                onClick={() => setForm({ ...form, type: t, category: t === 'expense' ? EXPENSE_CATS[0] : INCOME_CATS[0] })}
+                                className={`py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                                    form.type === t
+                                        ? t === 'expense'
+                                            ? 'bg-red-50 text-neg shadow-card border border-red-200/70'
+                                            : 'bg-green-50 text-green-700 shadow-card border border-green-200/70'
+                                        : 'text-sub hover:text-ink'
+                                }`}>
+                                {t === 'expense' ? 'Expense' : 'Income'}
+                            </button>
+                        ))}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div className="md:col-span-2">
-                            <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Amount</label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-3.5 text-white/50 text-lg">₹</span>
-                                <input
-                                    type="number"
-                                    value={form.amount}
-                                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                                    className="glass-input w-full pl-10 text-xl font-bold"
-                                    placeholder="0.00"
-                                    required
-                                />
-                            </div>
+                    <div>
+                        <label className="label block mb-2">Amount</label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sub">₹</span>
+                            <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                                className="field-input w-full pl-8 num text-2xl" placeholder="0" required />
                         </div>
+                    </div>
 
-                        <div className="md:col-span-2">
-                            <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Merchant / Description</label>
-                            <input
-                                type="text"
-                                value={form.merchant}
-                                onChange={(e) => setForm({ ...form, merchant: e.target.value })}
-                                className="glass-input w-full"
-                                placeholder="e.g. Starbucks, Uber, etc."
-                                required
-                            />
-                        </div>
+                    <div>
+                        <label className="label block mb-2">Merchant / Description</label>
+                        <input type="text" value={form.merchant} onChange={(e) => setForm({ ...form, merchant: e.target.value })}
+                            className="field-input w-full" placeholder="e.g. Swiggy, Petrol, Rent" required />
+                    </div>
 
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Date</label>
-                            <input
-                                type="date"
-                                value={form.date}
-                                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                                className="glass-input w-full text-white/80"
-                                required
-                            />
+                            <label className="label block mb-2">Date</label>
+                            <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+                                className="field-input w-full" required />
                         </div>
-
                         <div>
-                            <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Payment Method</label>
-                            <select
-                                value={form.source}
-                                onChange={(e) => setForm({ ...form, source: e.target.value })}
-                                className="glass-input w-full appearance-none"
-                            >
-                                <option value="Online" className="bg-slate-900">Online / UPI</option>
-                                <option value="Cash" className="bg-slate-900">Cash</option>
+                            <label className="label block mb-2">Payment Method</label>
+                            <select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}
+                                className="field-input w-full appearance-none">
+                                <option value="Online" className="bg-surface">Online / UPI</option>
+                                <option value="Cash"   className="bg-surface">Cash</option>
                             </select>
                         </div>
+                    </div>
 
-                        <div className="md:col-span-2">
-                            <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">Category</label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {categories.map(cat => (
-                                    <button
-                                        type="button"
-                                        key={cat}
-                                        onClick={() => setForm({ ...form, category: cat })}
-                                        className={`py-2 rounded-lg text-sm border transition-all ${form.category === cat
-                                            ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                                            : 'bg-white/5 border-white/5 text-muted hover:bg-white/10'
-                                            }`}
-                                    >
-                                        {cat}
-                                    </button>
-                                ))}
-                            </div>
+                    <div>
+                        <label className="label block mb-3">Category</label>
+                        <div className="flex flex-wrap gap-2">
+                            {categories.map((cat) => (
+                                <button key={cat} type="button" onClick={() => setForm({ ...form, category: cat })}
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                                        form.category === cat
+                                            ? 'bg-ink text-white'
+                                            : 'bg-raised text-sub hover:text-ink hover:bg-border'
+                                    }`}>
+                                    {cat}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white p-4 rounded-xl font-bold uppercase tracking-wide transition-all shadow-lg shadow-primary/25 flex justify-center items-center group"
-                    >
-                        {loading ? 'Saving...' : 'Confirm Transaction'}
-                        <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />
+                    <button type="submit" disabled={loading}
+                        className="w-full bg-ink hover:bg-ink/85 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.98] shadow-card-md">
+                        {loading ? (
+                            <span className="flex items-center gap-2">
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Saving…
+                            </span>
+                        ) : (<>Confirm Transaction <ArrowRight size={16} /></>)}
                     </button>
                 </form>
             )}

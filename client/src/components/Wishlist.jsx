@@ -1,163 +1,112 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ShoppingBag, Calculator, CheckCircle, XCircle, AlertTriangle, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Calculator, CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
 
 const Wishlist = () => {
-    const navigate = useNavigate();
     const [balance, setBalance] = useState(0);
-    const [loading, setLoading] = useState(true);
-
-    const [item, setItem] = useState({
-        name: '',
-        price: ''
-    });
-
+    const [loadingBal, setLoadingBal] = useState(true);
+    const [item, setItem] = useState({ name: '', price: '' });
     const [result, setResult] = useState(null);
 
     useEffect(() => {
-        fetchBalance();
+        axios.get('/api/dashboard/stats').then(r => setBalance(r.data.totalBalance)).catch(() => {}).finally(() => setLoadingBal(false));
     }, []);
-
-    const fetchBalance = async () => {
-        try {
-            const res = await axios.get('/api/dashboard/stats');
-            setBalance(res.data.totalBalance);
-        } catch (err) { }
-        finally { setLoading(false); }
-    };
 
     const checkAffordability = (e) => {
         e.preventDefault();
         const price = parseFloat(item.price);
         if (!price) return;
 
-        // If balance is 0 or uninitialized
         if (balance === 0) {
-            setResult({
-                verdict: 'No Funds.',
-                color: 'rose',
-                icon: <XCircle size={48} />,
-                message: `Your tracking balance is 0. Add some income or transactions first to calculate accurately!`,
-                remaining: -price
-            });
+            setResult({ verdict: 'No funds', color: 'neg', icon: XCircle, message: "Your balance is 0. Add income or transactions first.", remaining: -price });
             return;
         }
 
         const remaining = balance - price;
         const ratio = (price / balance) * 100;
 
-        let verdict = '';
-        let color = '';
-        let icon = null;
-        let message = '';
+        if      (remaining < 0)                                    setResult({ verdict: 'Not enough',  color: 'neg',  icon: XCircle,      message: `You're short by ₹${Math.abs(remaining).toLocaleString('en-IN')}.`,                        remaining });
+        else if (remaining < 500 && remaining < balance * 0.1)    setResult({ verdict: 'Risky',        color: 'warn', icon: AlertTriangle, message: `Only ₹${remaining.toLocaleString('en-IN')} left. Very tight!`,                           remaining });
+        else if (ratio > 60)                                       setResult({ verdict: 'Big spend',    color: 'ink',  icon: AlertTriangle, message: `This uses ${Math.round(ratio)}% of your balance. Affordable but significant.`,           remaining });
+        else                                                       setResult({ verdict: 'Go for it',    color: 'pos',  icon: CheckCircle,   message: `You'll have ₹${remaining.toLocaleString('en-IN')} left comfortably.`,                   remaining });
+    };
 
-        if (remaining < 0) {
-            verdict = 'Nope.';
-            color = 'rose';
-            icon = <XCircle size={48} />;
-            message = `You are short by ₹${Math.abs(remaining).toLocaleString()}.`;
-        }
-        // Logic Update: Only considered risky if remaining is very low (< 10% of balance AND < 500)
-        else if (remaining < 500 && remaining < (balance * 0.1)) {
-            verdict = 'Risky.';
-            color = 'amber';
-            icon = <AlertTriangle size={48} />;
-            message = `You'll be left with only ₹${remaining.toLocaleString()}. That's cutting it close!`;
-        }
-        else if (ratio > 60) {
-            verdict = 'Big Item.';
-            color = 'blue';
-            icon = <AlertTriangle size={48} />;
-            message = `This takes up ${Math.round(ratio)}% of your money. It's affordable, but a major chunk.`;
-        }
-        else {
-            verdict = 'Go for it!';
-            color = 'emerald';
-            icon = <CheckCircle size={48} />;
-            message = `You'll still have ₹${remaining.toLocaleString()} left comfortably. Treat yourself!`;
-        }
-
-        setResult({ verdict, color, icon, message, remaining });
+    const STYLES = {
+        neg:  { border: 'border-neg/30',  bg: 'bg-neg/[0.06]',  text: 'text-neg' },
+        warn: { border: 'border-warn/30', bg: 'bg-warn/[0.06]', text: 'text-warn' },
+        ink:  { border: 'border-rule',    bg: 'bg-parchment',   text: 'text-ink' },
+        pos:  { border: 'border-pos/30',  bg: 'bg-pos/[0.06]',  text: 'text-pos' },
     };
 
     return (
-        <div className="max-w-xl mx-auto space-y-6 animate-fade-in-up pb-24">
-            <header className="mb-8 text-center">
-                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-2 flex items-center justify-center gap-3">
-                    <ShoppingBag className="text-pink-400" /> Wishlist Check
-                </h2>
-                <p className="text-muted">Can you afford that shiny new thing?</p>
-            </header>
+        <div className="max-w-lg mx-auto space-y-5 animate-fade-in-up">
 
-            <div className={`glass-card p-8 transition-all duration-500 ${result ? 'scale-95 opacity-50 blur-[1px]' : 'scale-100'}`}>
-                <div className="text-center mb-6">
-                    <div className="text-sm text-muted uppercase tracking-wider mb-1">Current Balance</div>
-                    <div className="text-4xl font-bold text-white">₹{balance.toLocaleString()}</div>
+            <div className="pt-2 pb-1 border-b border-rule text-center">
+                <div className="data-label mb-1">Purchase Check</div>
+                <h1 className="page-title">Wishlist</h1>
+            </div>
+
+            <div className="panel p-5 text-center">
+                <div className="data-label mb-2">Current Total Balance</div>
+                <div className="num text-4xl text-ink">
+                    {loadingBal ? '—' : `₹${balance.toLocaleString('en-IN')}`}
                 </div>
+            </div>
 
-                <form onSubmit={checkAffordability} className="space-y-6">
+            <div className="panel p-5">
+                <form onSubmit={checkAffordability} className="space-y-4">
                     <div>
-                        <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">I want to buy...</label>
-                        <input
-                            type="text"
-                            value={item.name}
-                            onChange={(e) => setItem({ ...item, name: e.target.value })}
-                            className="glass-input w-full"
-                            placeholder="e.g. New Sneakers"
-                            required
-                        />
+                        <label className="data-label block mb-2">I want to buy…</label>
+                        <input type="text" value={item.name} onChange={(e) => setItem({ ...item, name: e.target.value })}
+                            className="field-input w-full" placeholder="e.g. New Sneakers, iPhone, etc." required />
                     </div>
                     <div>
-                        <label className="block text-xs uppercase tracking-wider text-muted mb-2 pl-1">It costs...</label>
+                        <label className="data-label block mb-2">It costs…</label>
                         <div className="relative">
-                            <span className="absolute left-4 top-3.5 text-white/50 text-lg">₹</span>
-                            <input
-                                type="number"
-                                value={item.price}
-                                onChange={(e) => setItem({ ...item, price: e.target.value })}
-                                className="glass-input w-full pl-10 text-xl font-bold"
-                                placeholder="0.00"
-                                required
-                            />
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sub font-sans">₹</span>
+                            <input type="number" value={item.price} onChange={(e) => setItem({ ...item, price: e.target.value })}
+                                className="field-input w-full pl-8 num text-2xl" placeholder="0" required />
                         </div>
                     </div>
-
-                    <button
-                        type="submit"
-                        disabled={!item.price || loading}
-                        className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white p-4 rounded-xl font-bold uppercase tracking-wide transition-all shadow-lg shadow-pink-500/25 flex justify-center items-center gap-2"
-                    >
-                        <Calculator size={18} /> Can I Afford It?
+                    <button type="submit" disabled={!item.price || loadingBal}
+                        className="w-full bg-ink hover:bg-neutral-700 disabled:opacity-40 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                        <Calculator size={15} /> Check Affordability
                     </button>
                 </form>
             </div>
 
-            {/* Verdict Modal/Card */}
             {result && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setResult(null)}></div>
-                    <div className={`relative bg-slate-900 border border-white/10 p-8 rounded-3xl max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col items-center text-center gap-4`}>
-                        <div className={`text-${result.color}-400 mb-2`}>
-                            {result.icon}
-                        </div>
-
-                        <h3 className={`text-4xl font-bold text-${result.color}-400 mb-1`}>{result.verdict}</h3>
-                        <p className="text-white/80 text-lg leading-relaxed">{result.message}</p>
-
-                        {result.remaining >= 0 && (
-                            <div className="my-4 p-3 bg-white/5 rounded-xl w-full">
-                                <div className="text-xs text-muted mb-1">New Balance</div>
-                                <div className="text-xl font-mono text-white">₹{result.remaining.toLocaleString()}</div>
-                            </div>
-                        )}
-
-                        <button
-                            onClick={() => setResult(null)}
-                            className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors"
-                        >
-                            Check Another
+                <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+                    <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setResult(null)} />
+                    <div className="relative bg-sheet border border-rule rounded-t-2xl md:rounded-2xl w-full md:max-w-sm p-6 shadow-paper-lg animate-slide-up md:animate-in">
+                        <button onClick={() => setResult(null)}
+                            className="absolute top-4 right-4 w-7 h-7 rounded-lg text-dim hover:text-ink hover:bg-parchment flex items-center justify-center transition-all">
+                            <X size={13} />
                         </button>
+                        {(() => {
+                            const style = STYLES[result.color];
+                            const Icon = result.icon;
+                            return (
+                                <div className="text-center">
+                                    <div className={`w-14 h-14 rounded-2xl ${style.bg} border ${style.border} flex items-center justify-center mx-auto mb-4`}>
+                                        <Icon size={24} className={style.text} />
+                                    </div>
+                                    <h3 className={`font-serif font-bold italic text-2xl mb-2 ${style.text}`}>{result.verdict}</h3>
+                                    <div className="data-label mb-1">{item.name}</div>
+                                    <p className="text-sub text-sm leading-relaxed mb-5">{result.message}</p>
+                                    {result.remaining >= 0 && (
+                                        <div className={`panel p-4 mb-5 ${style.bg} border ${style.border}`}>
+                                            <div className="data-label mb-1">Balance After Purchase</div>
+                                            <div className="num text-xl text-ink">₹{result.remaining.toLocaleString('en-IN')}</div>
+                                        </div>
+                                    )}
+                                    <button onClick={() => setResult(null)}
+                                        className="w-full py-2.5 rounded-lg bg-parchment hover:bg-rule/50 text-ink text-sm font-medium transition-all border border-rule">
+                                        Check Another
+                                    </button>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
