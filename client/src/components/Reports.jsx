@@ -26,7 +26,7 @@ const Reports = () => {
             doc.rect(0, 0, 210, 36, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(20); doc.setFont('helvetica', 'bold');
-            doc.text('Vault — Finance Report', 14, 22);
+            doc.text('MoneyMap — Finance Report', 14, 22);
             doc.setFontSize(9); doc.setFont('helvetica', 'normal');
             doc.text(`Period: ${start}  →  ${end}`, 14, 30);
 
@@ -52,7 +52,7 @@ const Reports = () => {
                 alternateRowStyles: { fillColor: [247, 243, 236] },
             });
 
-            doc.save(`Vault_Report_${start}_to_${end}.pdf`);
+            doc.save(`MoneyMap_Report_${start}_to_${end}.pdf`);
         } catch (err) { console.error(err); alert('Error generating report'); }
         finally { setLoading(false); }
     };

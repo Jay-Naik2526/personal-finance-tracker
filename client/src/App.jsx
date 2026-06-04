@@ -22,7 +22,7 @@ const Layout = ({ children }) => {
     return (
         <div className="min-h-screen">
             {!isAuthPage && <Navbar />}
-            <main className={!isAuthPage ? 'pt-4 pb-28 md:pb-10 px-4 md:px-8 max-w-7xl mx-auto' : ''}>
+            <main className={!isAuthPage ? 'pt-20 md:pt-24 pb-28 md:pb-10 px-4 md:px-8 max-w-7xl mx-auto' : ''}>
                 {children}
             </main>
         </div>

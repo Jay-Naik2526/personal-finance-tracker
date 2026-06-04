@@ -37,9 +37,9 @@ const Register = () => {
 
                 <div className="relative z-10 flex items-center gap-2.5">
                     <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
-                        <span className="text-ink text-[11px] font-bold">FT</span>
+                        <span className="text-ink text-[11px] font-bold">MM</span>
                     </div>
-                    <span className="font-extrabold text-white text-base tracking-tight">Vault</span>
+                    <span className="font-extrabold text-white text-base tracking-tight">MoneyMap</span>
                 </div>
 
                 <div className="relative z-10">
@@ -69,7 +69,7 @@ const Register = () => {
                     </div>
                 </div>
 
-                <div className="relative z-10 text-white/20 text-xs">© {new Date().getFullYear()} Vault</div>
+                <div className="relative z-10 text-white/20 text-xs">© {new Date().getFullYear()} MoneyMap</div>
             </div>
 
             {/* ── Right form ── */}
@@ -78,9 +78,9 @@ const Register = () => {
 
                     <div className="flex items-center gap-2 mb-10 lg:hidden">
                         <div className="w-7 h-7 bg-ink rounded-xl flex items-center justify-center">
-                            <span className="text-white text-[10px] font-bold">FT</span>
+                            <span className="text-white text-[10px] font-bold">MM</span>
                         </div>
-                        <span className="font-extrabold text-ink text-sm">Vault</span>
+                        <span className="font-extrabold text-ink text-sm">MoneyMap</span>
                     </div>
 
                     <h1 className="text-2xl font-bold text-ink mb-1">Create an account</h1>
